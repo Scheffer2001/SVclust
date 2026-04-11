@@ -1,0 +1,129 @@
+---
+title: "Introduction to Support Vector Clustering with SVclust"
+author: "Lucas Scheffer"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to Support Vector Clustering with SVclust}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+  
+## Theory  
+  
+Support Vector Clustering (SVC) is a clustering algorithm which adapts the Support Vector Machines (SVM) theory, proposed by Vapnik *et al*, to cluster the datapoints into groups with similar characteristics.  
+  
+Developed by Ben-Hur *et al.*(2001), this method maps data points to a high-dimensional feature space using a kernel $\phi$. In this space, we seek the smallest sphere that encloses the images of the data points. We can consider doing this task by minimizing the hypersphere radius $R$:  
+  
+$$
+\min_{R} R^2 \text{.}
+$$
+  
+To account for outliers or overlapping distributions, we introduce slack variables $\xi$ and a penalty constant $C$. The primal optimization problem is defined as:
+  
+$$
+R^2 + C \sum_{i=1}^n \xi_i\text{,}
+$$
+  
+subject to: $$\|\Phi(\mathbf{x}) - a\|^2 \le R^2 + \xi_i\text{ , }\xi_i\geq0$$, with $a$ as the center of hypersphere.  
+  
+Points that lie on the surface of the sphere are the **Support Vectors (SVs)**, while points outside are **Bounded Support Vectors (BSVs)**.  
+  
+### The Dual Problem  
+  
+To solve the primal optimization problem efficiently, we use the Lagrangian formulation. By introducing the Lagrange multipliers $\beta_i$ associated with the constraints, we derive the following dual problem, which is a Quadratic Programming (QP) task:  
+  
+$$
+\max_{\beta} \sum_{i=1}^n \beta_i K(\mathbf{x}, \mathbf{x}) - \sum_{i,j=1}^n \beta_i \beta_j K(\mathbf{x}, \mathbf{x}'),
+$$  
+  
+subject to:  
+  
+$$
+0 \le \beta_i \le C, \quad \sum_{i=1}^n \beta_i = 1,
+$$
+  
+where $K(\mathbf{x}, \mathbf{x}') = \Phi(\mathbf{x}) \cdot \Phi(\mathbf{x}')$ is the kernel function (e.g., Gaussian, Laplacian, or Cauchy).   
+  
+The solution to this problem yields the optimal multipliers $\beta_i$. The distance of any point $x$ to the center of the sphere in the feature space, $R^2(x)$, can then be calculated as:  
+  
+$$R^2(x) = K(x, x) - 2 \sum_{i=1}^n \beta_i K(\mathbf{x}, x) + \sum_{i,j=1}^n \beta_i \beta_j K(\mathbf{x}, \mathbf{x}')$$  
+  
+The radius of the sphere, $R$, is determined by the distance $R(\mathbf{x})$ for any Support Vector $\mathbf{x}$ (where $0 < \beta_i < C$).  
+  
+## Connection Step  
+  
+Two points belong to the same cluster if the path connecting them in the feature space remains within the sphere. This is checked numerically by sampling `scan_n` points along the segment. Two points $\mathbf{x}$ and $\mathbf{x}'$ are connected if $||\phi(t\mathbf{x} + (1 −t)\mathbf{x}') −a||^2 \leq R^2\text{, } \forall t \in (0,1)$, with $t$ as a position in the segment.  
+  
+## Parameter Selection  
+  
+The Gaussian kernel parameter $\sigma$ (sigma) is the most critical hyperparameter in SVC. It controls the scale at which the data is probed:  
+  
+-   A small $\sigma$ results in a smooth feature space, often leading to a single large cluster.  
+  
+-   A large $\sigma$ increases the tightness of the hypersphere, which may lead to over-fragmentation.  
+  
+`SVclust` provides an automated grid search for $\sigma$ based on internal validation metrics: Silhouette width, Dunn index, or Within-cluster Sum of Squares (WSS).  
+  
+## Computational Efficiency  
+  
+Since calculating the adjacency matrix can be $O(n^2)$, this package offers a hybrid approach for scalability:  
+  
+-   Sampling: Run SVC on a manageable subset (defined by n_row).  
+  
+-   SVM Extension: Classify the remaining points using an SVM trained on the SVC results.  
+  
+## Example: non-linear clustering  
+  
+```{r setup}
+## Sintetic dataset (two circles)
+library(SVclust)
+set.seed(42)
+n <- 100
+theta <- seq(0, 2*pi, length.out = n)
+c1_data <- cbind(cos(theta), sin(theta)) + matrix(runif(n*2, -0.1, 0.1), ncol=2)
+c2_data <- cbind(2*cos(theta), 2*sin(theta)) + matrix(runif(n*2, -0.1, 0.1), ncol=2)
+
+df_circles <- as.data.frame(rbind(c1_data, c2_data))
+colnames(df_circles) <- c("c1", "c2")
+```
+
+```{r comparison, fig.width = 10, fig.height = 5, out.width = "100%"}
+results <-  SVC(
+  df_circles,
+  sigma = 2,
+  scan_n = 10,
+  kernel = "gaussian", 
+  verbose = FALSE
+)
+library(ggplot2)
+set.seed(42)
+
+df_circles$svc_cluster <- as.factor(results$clusters)
+p_svc <- ggplot(df_circles, aes(x = c1, y = c2, color = svc_cluster)) +
+  geom_point(size = 2) + coord_fixed() +
+  labs(title = "Support Vector Clustering", x = "C1", y = "C2", color = "SVC Cluster") +
+  theme_minimal() + theme(legend.position = "bottom")
+
+p_svc
+# library(gridExtra)
+# km_res <- kmeans(df_circles[, 1:2], centers = 2)
+# df_circles$kmeans_cluster <- as.factor(km_res$cluster)
+# p_km <- ggplot(df_circles, aes(x = c1, y = c2, color = kmeans_cluster)) +
+  # geom_point(size = 2) + coord_fixed() +
+  # labs(title = "K-means Clustering", x = "C1", y = "C2", color = "KM Cluster") +
+  # theme_minimal() + theme(legend.position = "bottom")
+# grid.arrange(p_km, p_svc, ncol = 2)
+```
+
+## References
+
+1.  Ben-Hur, A., Horn, D., Siegelmann, H. T., & Vapnik, V. (2001). Support vector clustering. *Journal of Machine Learning Research*, 2(Dec), 125-137.
+2.  Schölkopf, B., Williamson, R. C., Smola, A. J., Shawe-Taylor, J., & Platt, J. C. (1999). Support vector method for novelty detection. *Advances in Neural Information Processing Systems*, 12.
+3.  Stellato, B., Banjac, G., Goulart, P., Bemporad, A., & Boyd, S. (2020). OSQP: An Operator Splitting Solver for Quadratic Programs. *Mathematical Programming Computation*, 12(4), 637-672.

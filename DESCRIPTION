@@ -1,0 +1,34 @@
+Package: SVclust
+Title: Support Vector Clustering Algorithm Package
+Version: 0.0.0.9000
+Authors@R: 
+    person("Lucas", "Scheffer", , "lucasscheffer2001@gmail.com", role = c("aut", "cre"))
+Description: This package provides an implementation of the Support Vector
+    Clustering (SVC) algorithm. SVC maps data to a high-dimensional
+    feature space using a kernel function, determines the minimal
+    enclosing hypersphere, and identifies clusters by checking
+    connectivity paths within this sphere. It offers features like
+    automatic tuning of the sigma parameter and efficient handling of
+    large datasets by applying SVC to a subset and classifying remaining
+    points with a Support Vector Machine.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: 
+    cluster,
+    clValid,
+    doParallel,
+    dplyr,
+    e1071,
+    foreach,
+    magrittr,
+    igraph,
+    osqp,
+    parallel
+Suggests: 
+    ggplot2,
+    gridExtra,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
