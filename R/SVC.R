@@ -28,6 +28,7 @@ utils::globalVariables(c("j_loop_var", "."))
 #'        `sigma_candidates` is NULL (default is 5).
 #' @param verbose A boolean value. If TRUE (default), progress updates are printed.
 #'        OSQP solver messages are always suppressed. If FALSE, these messages are suppressed.
+#' @param n_cores An integer specifying the number of cores to use for parallel processing. If NULL (default), it automatically detects available cores.
 #'
 #' @returns A list containing:
 #' \itemize{
@@ -62,7 +63,8 @@ utils::globalVariables(c("j_loop_var", "."))
 #'   data(iris)
 #'   set.seed(123)
 #'   iris_subset_data <- iris[sample(1:nrow(iris), 50), 1:4]
-#'   res <- SVC(data = iris_subset_data, scan_n = 5, metric = "silhouette", n_sigma_search = 7)
+#'   res <- SVC(data = iris_subset_data, scan_n = 5, metric = "silhouette",
+#'              n_sigma_search = 7, n_cores = 2)
 #'   print(paste("Selected sigma (silhouette):", res$sigma_selected))
 #'   print(res$all_sigma_scores)
 #'
@@ -81,12 +83,25 @@ utils::globalVariables(c("j_loop_var", "."))
 #'   print(p1)
 #'  }
 #' }
-SVC <- function(data, sigma = NULL, scan_n, kernel = "gaussian", n_row = NULL,
+SVC <- function(data, sigma = NULL,
+                scan_n,
+                kernel = "gaussian",
+                n_row = NULL,
                 metric = "silhouette",
                 sigma_candidates = NULL,
                 n_sigma_search = 5,
-                verbose = TRUE) {
+                verbose = TRUE,
+                n_cores = NULL) {
   start_total_time <- Sys.time()
+  if (is.null(n_cores)) {
+    if (Sys.getenv("_R_CHECK_LIMIT_CORES_", "") == "TRUE") {
+      actual_num_cores <- 2
+    } else {
+      actual_num_cores <- max(1, parallel::detectCores() - 1)
+    }
+  } else {
+    actual_num_cores <- n_cores
+  }
   calculate_metric_value <- function(cluster_assignments, data_for_metric, metric_name) {
     if (length(unique(cluster_assignments)) == 0) {
       return(ifelse(metric_name == "wss", Inf, ifelse(metric_name == "silhouette", -1, 0)))
@@ -307,7 +322,7 @@ SVC <- function(data, sigma = NULL, scan_n, kernel = "gaussian", n_row = NULL,
       if (verbose) cat("Using provided sigma candidates:", paste(signif(sigma_candidates,3), collapse=", "), "\n")
     }
     best_metric_score_value <- ifelse(metric %in% c("wss"), Inf, -Inf)
-    num_cores_for_sigma_search_conn <- max(1, floor((parallel::detectCores() -1) / 2) )
+    num_cores_for_sigma_search_conn <- max(1, floor(actual_num_cores / 2))
     all_sigma_search_scores_df <- data.frame()
     for (sigma_test_val in sigma_candidates) {
       if (verbose) cat("  Testing sigma =", signif(sigma_test_val,4), "...")
@@ -352,7 +367,7 @@ SVC <- function(data, sigma = NULL, scan_n, kernel = "gaussian", n_row = NULL,
     final_is_support_vector_flags <- best_sigma_parameters$is_support_vector
   } else {
     if (verbose) cat("Using provided sigma =", sigma, "\n")
-    num_cores_for_main_run_conn <- max(1, parallel::detectCores() - 1)
+    num_cores_for_main_run_conn <- actual_num_cores
     main_core_svc_run_results <- run_core_svc_algorithm(data_subset_svc_numeric, sigma, selected_kernel_function, scan_n, num_cores_for_main_run_conn)
     final_cluster_assignments <- main_core_svc_run_results$clusters
     final_lagrange_multipliers <- main_core_svc_run_results$lagrange_multipliers

@@ -100,7 +100,8 @@ results <-  SVC(
   sigma = 2,
   scan_n = 10,
   kernel = "gaussian", 
-  verbose = FALSE
+  verbose = FALSE,
+  n_cores = 2
 )
 library(ggplot2)
 set.seed(42)

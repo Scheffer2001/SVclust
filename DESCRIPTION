@@ -1,8 +1,9 @@
 Package: SVclust
 Title: Support Vector Clustering Algorithm Package
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
-    person("Lucas", "Scheffer", , "lucasscheffer2001@gmail.com", role = c("aut", "cre"))
+    c(person("Lucas", "Scheffer", , "lucasscheffer2001@gmail.com", role = c("aut", "cre")),
+      person("Anderson", "Ara", , "ara@ufpr.br", role = c("aut", "ths")))
 Description: This package provides an implementation of the Support Vector
     Clustering (SVC) algorithm. SVC maps data to a high-dimensional
     feature space using a kernel function, determines the minimal

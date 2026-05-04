@@ -13,7 +13,8 @@ SVC(
   metric = "silhouette",
   sigma_candidates = NULL,
   n_sigma_search = 5,
-  verbose = TRUE
+  verbose = TRUE,
+  n_cores = NULL
 )
 }
 \arguments{
@@ -44,6 +45,8 @@ candidates are generated heuristically based on data distances with an expanded 
 
 \item{verbose}{A boolean value. If TRUE (default), progress updates are printed.
 OSQP solver messages are always suppressed. If FALSE, these messages are suppressed.}
+
+\item{n_cores}{An integer specifying the number of cores to use for parallel processing. If NULL (default), it automatically detects available cores.}
 }
 \value{
 A list containing:
@@ -75,7 +78,8 @@ if (requireNamespace("dplyr") && requireNamespace("ggplot2") &&
   data(iris)
   set.seed(123)
   iris_subset_data <- iris[sample(1:nrow(iris), 50), 1:4]
-  res <- SVC(data = iris_subset_data, scan_n = 5, metric = "silhouette", n_sigma_search = 7)
+  res <- SVC(data = iris_subset_data, scan_n = 5, metric = "silhouette",
+             n_sigma_search = 7, n_cores = 2)
   print(paste("Selected sigma (silhouette):", res$sigma_selected))
   print(res$all_sigma_scores)
 
