@@ -6,13 +6,10 @@
 \usage{
 SVC(
   data,
-  sigma = NULL,
+  gamma = NULL,
   scan_n,
   kernel = "gaussian",
-  n_row = NULL,
-  metric = "silhouette",
-  sigma_candidates = NULL,
-  n_sigma_search = 5,
+  n_obs = NULL,
   verbose = TRUE,
   n_cores = NULL
 )
@@ -20,8 +17,8 @@ SVC(
 \arguments{
 \item{data}{A data frame or matrix with numerical data.}
 
-\item{sigma}{A numerical value for the sigma parameter of the kernel function.
-If NULL (default), sigma is optimized using a grid search based on the \code{metric} chosen.}
+\item{gamma}{A numerical value or "auto". If "auto" (default), gamma is estimated
+using the inverse of median squared distance of our data. If a numeric value is provided, it is used directly.}
 
 \item{scan_n}{An integer value for the number of points randomly selected in a \verb{[0,1]} interval.
 These points define line segments between pairs of data points and are used to
@@ -29,24 +26,16 @@ build an adjacency matrix indicating if two data points are in the same cluster.
 
 \item{kernel}{A character string for the type of kernel: "gaussian" (default), "laplacian", or "cauchy".}
 
-\item{n_row}{An integer value. If \code{n_row} is specified and less than the total number of rows in \code{data},
-the dataset is split. SVC is applied to a random sample of \code{n_row} rows.
-The remaining \code{n - n_row} points are then classified using an SVM trained on the SVC clusters.
+\item{n_obs}{An integer value. If \code{n_obs} is specified and less than the total number of rows in \code{data},
+the dataset is split. SVC is applied to a random sample of \code{n_obs} rows.
+The remaining \code{n - n_obs} points are then classified using an SVM trained on the SVC clusters.
 Use this for large datasets for faster processing (default is NULL, meaning all data is used for SVC).}
-
-\item{metric}{A character string for the internal clustering validation metric used for sigma optimization if \code{sigma} is NULL.
-Must be "silhouette" (default), "dunn", or "wss".}
-
-\item{sigma_candidates}{A numeric vector of sigma values to test during grid search. If NULL (default),
-candidates are generated heuristically based on data distances with an expanded search range.}
-
-\item{n_sigma_search}{An integer, the number of sigma values to generate for the heuristic grid search if
-\code{sigma_candidates} is NULL (default is 5).}
 
 \item{verbose}{A boolean value. If TRUE (default), progress updates are printed.
 OSQP solver messages are always suppressed. If FALSE, these messages are suppressed.}
 
-\item{n_cores}{An integer specifying the number of cores to use for parallel processing. If NULL (default), it automatically detects available cores.}
+\item{n_cores}{An integer specifying the number of cores to use for parallel processing.
+If NULL (default), it automatically detects available cores.}
 }
 \value{
 A list containing:
@@ -54,12 +43,9 @@ A list containing:
 \item \code{clusters}: A numeric vector of cluster assignments for the data subset SVC was run on (X_sub).
 \item \code{exec_time}: Total execution time of the function.
 \item \code{SV_clustering}: A binary vector indicating if a point in X_sub is an SVC SV.
-\item \code{SV_indices_svm}: Integer vector of indices (relative to X_sub) of SVM SVs if n_row was used.
+\item \code{SV_indices_svm}: Integer vector of indices (relative to X_sub) of SVM SVs if n_obs was used.
 \item \code{final_data}: A data frame, potentially X_sub combined with classified x_out points.
-\item \code{sigma_selected}: The final sigma value used for clustering.
-\item \code{metric_used_for_sigma_search}: The metric used if sigma search was performed.
-\item \code{best_metric_score}: The best score achieved during sigma search.
-\item \code{all_sigma_scores}: Data frame of all sigmas tested and their scores during search.
+\item \code{gamma_selected}: The final gamma value used for clustering.
 }
 }
 \description{
@@ -78,10 +64,7 @@ if (requireNamespace("dplyr") && requireNamespace("ggplot2") &&
   data(iris)
   set.seed(123)
   iris_subset_data <- iris[sample(1:nrow(iris), 50), 1:4]
-  res <- SVC(data = iris_subset_data, scan_n = 5, metric = "silhouette",
-             n_sigma_search = 7, n_cores = 2)
-  print(paste("Selected sigma (silhouette):", res$sigma_selected))
-  print(res$all_sigma_scores)
+  res <- SVC(data = iris_subset_data, scan_n = 5, n_cores = 2)
 
   # Plotting
   plot_df <- as.data.frame(iris_subset_data)

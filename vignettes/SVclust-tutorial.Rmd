@@ -63,19 +63,19 @@ Two points belong to the same cluster if the path connecting them in the feature
   
 ## Parameter Selection  
   
-The Gaussian kernel parameter $\sigma$ (sigma) is the most critical hyperparameter in SVC. It controls the scale at which the data is probed:  
+The Gaussian kernel parameter $\gamma$ (gamma) is the most critical hyperparameter in SVC. It controls the scale at which the data is probed:  
   
--   A small $\sigma$ results in a smooth feature space, often leading to a single large cluster.  
+-   A small $\gamma$ results in a smooth feature space, often leading to a single large cluster.  
   
--   A large $\sigma$ increases the tightness of the hypersphere, which may lead to over-fragmentation.  
+-   A large $\gamma$ increases the tightness of the hypersphere, which may lead to over-fragmentation.  
   
-`SVclust` provides an automated grid search for $\sigma$ based on internal validation metrics: Silhouette width, Dunn index, or Within-cluster Sum of Squares (WSS).  
+`SVclust` provides an automated $\gamma$ estimation method based on the median of pairwise squared distances, which is a common heuristic in kernel methods. Users can also specify $\gamma$ directly for more control.
   
 ## Computational Efficiency  
   
 Since calculating the adjacency matrix can be $O(n^2)$, this package offers a hybrid approach for scalability:  
   
--   Sampling: Run SVC on a manageable subset (defined by n_row).  
+-   Sampling: Run SVC on a manageable subset (defined by `n_row`).  
   
 -   SVM Extension: Classify the remaining points using an SVM trained on the SVC results.  
   
@@ -83,7 +83,7 @@ Since calculating the adjacency matrix can be $O(n^2)$, this package offers a hy
   
 ```{r setup}
 ## Sintetic dataset (two circles)
-library(SVclust)
+# library(SVclust)
 set.seed(42)
 n <- 100
 theta <- seq(0, 2*pi, length.out = n)
@@ -97,7 +97,7 @@ colnames(df_circles) <- c("c1", "c2")
 ```{r comparison, fig.width = 10, fig.height = 5, out.width = "100%"}
 results <-  SVC(
   df_circles,
-  sigma = 2,
+  gamma = 2,
   scan_n = 10,
   kernel = "gaussian", 
   verbose = FALSE,
