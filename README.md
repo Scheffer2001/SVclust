@@ -144,11 +144,11 @@ df <- as.data.frame(rbind(c1, c2))
 
 
 
-results <- SVC(data = df, scan\_n = 10, metric = "silhouette")
+results <- SVC(data = df, scan\_n = 10)
 
 
 
-print(results$sigma\_selected)
+print(results$gamma\_selected)
 
 table(results$clusters)
 

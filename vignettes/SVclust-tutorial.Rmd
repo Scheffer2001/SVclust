@@ -83,7 +83,7 @@ Since calculating the adjacency matrix can be $O(n^2)$, this package offers a hy
   
 ```{r setup}
 ## Sintetic dataset (two circles)
-# library(SVclust)
+library(SVclust)
 set.seed(42)
 n <- 100
 theta <- seq(0, 2*pi, length.out = n)
