@@ -1,33 +1,38 @@
 Package: SVclust
 Title: Support Vector Clustering Algorithm Package
 Version: 0.1.0
-Authors@R: 
+Authors@R:
     c(person("Lucas", "Scheffer", , "lucasscheffer2001@gmail.com", role = c("aut", "cre")),
       person("Anderson", "Ara", , "ara@ufpr.br", role = c("aut", "ths")))
-Description: This package provides an implementation of the Support Vector
-    Clustering (SVC) algorithm. SVC maps data to a high-dimensional
-    feature space using a kernel function, determines the minimal
-    enclosing hypersphere, and identifies clusters by checking
-    connectivity paths within this sphere. It offers features like
-    automatic tuning of the gamma parameter and efficient handling of
-    large datasets by applying SVC to a subset and classifying remaining
-    points with a Support Vector Machine.
+Description: Implements the Support Vector Clustering (SVC) algorithm of
+    Ben-Hur et al. (2001) <https://www.jmlr.org/papers/v2/horn01a.html>.
+    SVC maps data to a high-dimensional feature space using a kernel
+    function, determines the minimal enclosing hypersphere by solving the
+    dual quadratic program with 'osqp', and identifies clusters by checking
+    whether the line segments between pairs of points stay within this
+    sphere. It offers a median-distance heuristic for the kernel width and,
+    for large datasets, the option of applying SVC to a random subset and
+    classifying the remaining points with a support vector machine from
+    'e1071'.
 License: MIT + file LICENSE
+URL: https://github.com/Scheffer2001/SVclust
+BugReports: https://github.com/Scheffer2001/SVclust/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
-Imports: 
+Imports:
     doParallel,
-    dplyr,
     e1071,
     foreach,
-    magrittr,
     igraph,
-    osqp,
-    parallel
-Suggests: 
+    osqp (>= 1.0.0),
+    parallel,
+    stats,
+    utils
+Suggests:
     ggplot2,
-    gridExtra,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.1.0

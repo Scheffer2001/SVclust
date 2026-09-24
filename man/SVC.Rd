@@ -15,70 +15,96 @@ SVC(
 )
 }
 \arguments{
-\item{data}{A data frame or matrix with numerical data.}
+\item{data}{A numeric data frame, matrix or vector, with at least two rows and
+no missing or infinite values.}
 
-\item{gamma}{A numerical value or "auto". If "auto" (default), gamma is estimated
-using the inverse of median squared distance of our data. If a numeric value is provided, it is used directly.}
+\item{gamma}{The kernel width parameter: a single positive number, or \code{NULL}
+(default) or \code{"auto"} to estimate it with the median heuristic described in Details.}
 
-\item{scan_n}{An integer value for the number of points randomly selected in a \verb{[0,1]} interval.
-These points define line segments between pairs of data points and are used to
-build an adjacency matrix indicating if two data points are in the same cluster.}
+\item{scan_n}{A positive integer: the number of points randomly selected in the \verb{[0,1]} interval.
+They define the positions checked on the line segment between each pair of data points
+(the same positions are used for every pair) to build the adjacency matrix indicating
+if two data points are in the same cluster.}
 
 \item{kernel}{A character string for the type of kernel: "gaussian" (default), "laplacian", or "cauchy".}
 
-\item{n_obs}{An integer value. If \code{n_obs} is specified and less than the total number of rows in \code{data},
-the dataset is split. SVC is applied to a random sample of \code{n_obs} rows.
-The remaining \code{n - n_obs} points are then classified using an SVM trained on the SVC clusters.
-Use this for large datasets for faster processing (default is NULL, meaning all data is used for SVC).}
+\item{n_obs}{An integer value of at least 2. If \code{n_obs} is specified and less than the total number of rows
+in \code{data}, SVC is applied to a random sample of \code{n_obs} rows, and the remaining rows are
+classified with an SVM trained on the SVC clusters (if SVC finds a single cluster, all of them
+are assigned to it). Use this for large datasets for faster processing
+(default is NULL, meaning all data is used for SVC).}
 
-\item{verbose}{A boolean value. If TRUE (default), progress updates are printed.
-OSQP solver messages are always suppressed. If FALSE, these messages are suppressed.}
+\item{verbose}{A boolean value. If TRUE (default), progress messages are printed.
+OSQP solver messages are always suppressed.}
 
 \item{n_cores}{An integer specifying the number of cores to use for parallel processing.
-If NULL (default), it automatically detects available cores.}
+If NULL (default), all detected cores but one are used (two when the environment variable
+\verb{_R_CHECK_LIMIT_CORES_} is set to \code{TRUE}, as during CRAN checks).}
 }
 \value{
 A list containing:
 \itemize{
-\item \code{clusters}: A numeric vector of cluster assignments for the data subset SVC was run on (X_sub).
+\item \code{clusters}: A numeric vector of cluster assignments for the rows SVC was run on,
+in the order given by \code{subset_index}.
 \item \code{exec_time}: Total execution time of the function.
-\item \code{SV_clustering}: A binary vector indicating if a point in X_sub is an SVC SV.
-\item \code{SV_indices_svm}: Integer vector of indices (relative to X_sub) of SVM SVs if n_obs was used.
-\item \code{final_data}: A data frame, potentially X_sub combined with classified x_out points.
-\item \code{gamma_selected}: The final gamma value used for clustering.
+\item \code{SV_clustering}: A binary vector indicating if each row SVC was run on is an SVC SV,
+in the order given by \code{subset_index}.
+\item \code{SV_indices_svm}: Integer vector of indices (relative to the rows SVC was run on) of
+the SVM SVs, or \code{NULL} if \code{n_obs} was not used or SVC found a single cluster.
+\item \code{final_data}: \code{data} as a data frame, in its original row order, with a factor column
+\code{cluster_label} holding the cluster of every row (SVC clusters for the rows SVC was
+run on, SVM predictions for the other rows).
+\item \code{gamma_selected}: The gamma value used for clustering.
+\item \code{subset_index}: Integer vector with the rows of \code{data} SVC was run on;
+\code{seq_len(nrow(data))} when \code{n_obs} is not used.
 }
 }
 \description{
-This function implements Support Vector Clustering (SVC), a method based on support vector machine theory.
-The algorithm maps data to a high-dimensional feature space using a kernel function.
-In this feature space, it finds the smallest hypersphere enclosing the data.
-Support Vectors (SVs) defining this sphere are identified.
+Implements Support Vector Clustering (SVC) as proposed by Ben-Hur, Horn,
+Siegelmann and Vapnik (2001). The data are mapped to a high-dimensional
+feature space by a kernel function, where the smallest hypersphere enclosing
+the data is found by solving the dual quadratic program.
+Support Vectors (SVs) lie on the surface of this sphere.
 Paths between data points are checked for whether they leave the sphere;
 points connected by paths entirely within the sphere are considered to be in the same cluster.
 }
-\examples{
-\dontrun{
-if (requireNamespace("dplyr") && requireNamespace("ggplot2") &&
-    requireNamespace("gridExtra")) {
-  library(SVclust)
-  data(iris)
-  set.seed(123)
-  iris_subset_data <- iris[sample(1:nrow(iris), 50), 1:4]
-  res <- SVC(data = iris_subset_data, scan_n = 5, n_cores = 2)
+\details{
+\strong{Automatic gamma.} With \code{gamma = NULL} or \code{gamma = "auto"}, gamma is estimated on the rows
+used for SVC as the inverse of the median pairwise squared distance (Gaussian and Cauchy
+kernels) or of the median pairwise distance (Laplacian kernel, whose exponent uses the
+distance itself), so that the estimate does not depend on the units of the data. For the
+Gaussian kernel this is the middle value returned by \code{kernlab::sigest()} with
+\code{scaled = FALSE}, computed over all pairs instead of a random sample.
 
-  # Plotting
-  plot_df <- as.data.frame(iris_subset_data)
-  plot_df$clusters_assigned <- res$clusters
-  plot_df$is_SV_clustering <- as.logical(res$SV_clustering)
-  library(ggplot2)
-  p1 <- ggplot(plot_df, aes(x = Sepal.Length, y = Sepal.Width,
-                                 color = factor(clusters_assigned),
-                                 shape = factor(is_SV_clustering))) +
-    geom_point(size = 3) +
-    scale_shape_manual(values=c("FALSE"=19, "TRUE"=8)) +
-    labs(title = "SVC on Iris Subset", color = "Cluster", shape = "SVC SV") +
-    theme_minimal()
-  print(p1)
- }
+This heuristic sets the kernel width at the overall scale of the data, where SVC usually
+finds a single cluster. Treat it as a starting point: Ben-Hur et al. (2001, Section 4.2)
+start from a small gamma, where there is a single cluster, and increase it to observe the
+formation of an increasing number of clusters.
+
+\strong{Reproducibility.} The positions checked on the segments and, when \code{n_obs} is used, the
+rows used for SVC are drawn with R's random number generator. Call \code{\link[=set.seed]{set.seed()}} before
+\code{SVC()} for reproducible results.
+
+\strong{Parallel backend.} When more than one core is used, a PSOCK cluster is registered as the
+\code{foreach} backend during the call. On exit, the cluster is stopped and the sequential backend
+is registered.
 }
+\examples{
+# Two well-separated groups of points
+set.seed(1)
+x <- rbind(matrix(rnorm(40, mean = 0, sd = 0.3), ncol = 2),
+           matrix(rnorm(40, mean = 3, sd = 0.3), ncol = 2))
+res <- SVC(x, gamma = 1, scan_n = 5, n_cores = 1, verbose = FALSE)
+table(res$clusters)
+plot(x, col = res$clusters, pch = ifelse(res$SV_clustering == 1, 8, 19),
+     main = "SVC clusters (stars: support vectors)")
+
+# Run SVC on a random subset of 25 rows and classify the other 15 with an SVM
+res_sub <- SVC(x, gamma = 1, scan_n = 5, n_obs = 25, n_cores = 1, verbose = FALSE)
+table(res_sub$final_data$cluster_label)
+}
+\references{
+Ben-Hur, A., Horn, D., Siegelmann, H. T., and Vapnik, V. (2001). Support vector clustering.
+\emph{Journal of Machine Learning Research}, 2, 125-137.
+\url{https://www.jmlr.org/papers/v2/horn01a.html}
 }
